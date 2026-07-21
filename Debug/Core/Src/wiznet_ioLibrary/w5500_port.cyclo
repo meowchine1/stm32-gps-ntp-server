@@ -1,0 +1,5 @@
+../Core/Src/wiznet_ioLibrary/w5500_port.c:18:6:wizchip_select	1
+../Core/Src/wiznet_ioLibrary/w5500_port.c:23:6:wizchip_deselect	1
+../Core/Src/wiznet_ioLibrary/w5500_port.c:29:9:wizchip_read_byte	1
+../Core/Src/wiznet_ioLibrary/w5500_port.c:40:6:wizchip_write_byte	1
+../Core/Src/wiznet_ioLibrary/w5500_port.c:46:6:w5500_io_init	1

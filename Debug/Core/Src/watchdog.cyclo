@@ -1,0 +1,3 @@
+../Core/Src/watchdog.c:27:6:start_watchdog	1
+../Core/Src/watchdog.c:34:6:stop_watchdog	1
+../Core/Src/watchdog.c:41:6:bump_watchdog	1

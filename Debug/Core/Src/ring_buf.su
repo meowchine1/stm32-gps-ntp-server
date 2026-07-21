@@ -1,0 +1,3 @@
+../Core/Src/ring_buf.c:14:6:buffer_init	24	static
+../Core/Src/ring_buf.c:23:9:buffer_put_to_end	16	static
+../Core/Src/ring_buf.c:44:9:buffer_get_from_front	16	static
