@@ -53,7 +53,7 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOA, Display_CS_Pin|w5500_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(w5500_RST_GPIO_Port, w5500_RST_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(w5500_RST_GPIO_Port, w5500_RST_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pins : PAPin PAPin */
   GPIO_InitStruct.Pin = Display_CS_Pin|w5500_CS_Pin;

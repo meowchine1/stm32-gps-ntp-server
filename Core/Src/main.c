@@ -30,6 +30,7 @@
 #include "w5500_port.h"
 #include "watchdog.h"
 #include "ring_buf.h"
+#include "display.h"
 
 /* USER CODE END Includes */
 
@@ -128,6 +129,23 @@ int main(void)
   init_ring_buffer();
   w5500_io_init();
   ntp_server_init();
+
+
+	//init display (write "ready")
+	display_send_data(0xC, 1); //normal operation
+	display_send_data(0xF, 0); //normal operation
+	display_send_data(0xA, 0xF); //max intensity
+	display_send_data(0xB, 7); //scan all digits
+	display_send_data(9, 0); //no decode for all digits
+
+	display_send_data(5, 0b101);
+	display_send_data(4, 0b1001111);
+	display_send_data(3, 0b1110111);
+	display_send_data(2, 0b0111101);
+	display_send_data(1, 0b10111011);
+	display_send_data(6, 0);
+	display_send_data(7, 0);
+	display_send_data(8, 0);
 
   /* USER CODE END 2 */
 
