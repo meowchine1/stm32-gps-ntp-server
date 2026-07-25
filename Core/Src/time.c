@@ -37,9 +37,9 @@ extern TIM_HandleTypeDef htim5;
  * 3976214400
  */
 
-#define FIXED_DATE_NTP 	1767225600UL
+//#define FIXED_DATE_NTP 	1767225600UL
 
-//#define FIXED_DATE_NTP 3976214400UL
+#define FIXED_DATE_NTP 3976214400UL
 
 
 void sync_time_from_gps(uint8_t hour,

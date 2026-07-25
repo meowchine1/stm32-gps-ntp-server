@@ -69,14 +69,33 @@ void SystemClock_Config(void);
 uint8_t rxbuf[RX_BUF_SIZE];
 RingBuffer uart_rx_buf;
 
-// not used in main
-//extern uint8_t numbers[];
+extern UART_HandleTypeDef huart1;
+uint8_t uart_byte;
 
+extern uint8_t numbers[];
 
-void init_ring_buffer(void){
-	buffer_init(&uart_rx_buf, rxbuf, RX_BUF_SIZE);
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
+
+  if (huart->Instance == USART1)
+	{
+		uint8_t data = uart_byte;
+
+		if (data == 0xB6 || data == 0xA6 ||
+			data == 0xB4 || data == 0xA4)
+		{
+			data = 0x24;
+		}
+
+		buffer_put_to_end(&uart_rx_buf, data);
+
+		if (data == 0x24)
+		{
+			reset_uart_parser();
+		}
+
+		HAL_UART_Receive_IT(&huart1, &uart_byte, 1);
+	}
 }
-
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
@@ -86,6 +105,27 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
         stop_watchdog();
     }
 }
+
+void init_ring_buffer(void){
+	buffer_init(&uart_rx_buf, rxbuf, RX_BUF_SIZE);
+
+}
+
+
+/*
+ *
+ * void TIM2_IRQHandler()
+{
+	if(TIM2->SR & TIM_SR_UIF)
+	{
+		TIM2->SR = ~TIM_SR_UIF;
+		reset_uart_parser();
+		stop_watchdog();
+	}
+}
+ *
+ * */
+
 
 /* USER CODE END 0 */
 
@@ -126,23 +166,34 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   HAL_TIM_Base_Start(&htim5);
-  init_ring_buffer();
   w5500_io_init();
   ntp_server_init();
 
+  init_ring_buffer();
+  HAL_UART_Receive_IT(&huart1, &uart_byte, 1);
 
 	//init display (write "ready")
+
+  	  // MAX7219 init
 	display_send_data(0xC, 1); //normal operation
 	display_send_data(0xF, 0); //normal operation
 	display_send_data(0xA, 0xF); //max intensity
 	display_send_data(0xB, 7); //scan all digits
 	display_send_data(9, 0); //no decode for all digits
 
-	display_send_data(5, 0b101);
-	display_send_data(4, 0b1001111);
-	display_send_data(3, 0b1110111);
-	display_send_data(2, 0b0111101);
-	display_send_data(1, 0b10111011);
+
+	// KATE
+	display_send_data(5, 0b0101111); // K
+	display_send_data(4, 0b1110111); // A
+	display_send_data(3, 0b0000111); // T
+	display_send_data(2, 0b1001111); // E
+
+//	display_send_data(5, 0b101);
+//	display_send_data(4, 0b1001111);
+//	display_send_data(3, 0b1110111);
+//	display_send_data(2, 0b0111101);
+//	display_send_data(1, 0b10111011);
+
 	display_send_data(6, 0);
 	display_send_data(7, 0);
 	display_send_data(8, 0);
@@ -160,7 +211,7 @@ int main(void)
 	  ntp_server_process();
 	  // ************ ******************
 
-	  HAL_Delay(200);
+	  //HAL_Delay(200);
 
     /* USER CODE END WHILE */
 

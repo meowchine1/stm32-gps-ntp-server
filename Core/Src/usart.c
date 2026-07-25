@@ -32,6 +32,7 @@
 #include "watchdog.h"
 #include "display.h"
 #include "string.h"
+#include "time.h"
 
 /* USER CODE END 0 */
 
@@ -232,26 +233,26 @@ void process_uart(void)
 	}
 }
 
-void interrupt_uart_processor(void){
-
-	//extern UART_HandleTypeDef huart1;
-	if (USART1->SR & USART_SR_RXNE){
-		//GPIOA->BSRR = GPIO_BSRR_BS_0;
-
-		buffer_put_to_end(&uart_rx_buf,
-				(USART1->DR == 0xB6 || USART1->DR == 0xA6) ?
-						0x24 : ((USART1->DR == 0xB4 || USART1->DR == 0xA4) ?
-								0x24 : USART1->DR));
-
-		if(USART1->DR == 0x24) //'$'
-		{
-			reset_uart_parser();
-		}
-
-		//USART2->DR = USART1->DR;
-		//GPIOA->BSRR = GPIO_BSRR_BR_0;
-	}
-}
+//void interrupt_uart_processor(void){
+//
+//	//extern UART_HandleTypeDef huart1;
+//	if (USART1->SR & USART_SR_RXNE){
+//		//GPIOA->BSRR = GPIO_BSRR_BS_0;
+//
+//		buffer_put_to_end(&uart_rx_buf,
+//				(USART1->DR == 0xB6 || USART1->DR == 0xA6) ?
+//						0x24 : ((USART1->DR == 0xB4 || USART1->DR == 0xA4) ?
+//								0x24 : USART1->DR));
+//
+//		if(USART1->DR == 0x24) //'$'
+//		{
+//			reset_uart_parser();
+//		}
+//
+//		//USART2->DR = USART1->DR;
+//		//GPIOA->BSRR = GPIO_BSRR_BR_0;
+//	}
+//}
 
 
 

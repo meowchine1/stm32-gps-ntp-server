@@ -1,7 +1,7 @@
 /*
  * display.h
  *
- *  Created on: 20 апр. 2026 г.
+ *  Created on: 20 пїЅпїЅпїЅ. 2026 пїЅ.
  *      Author: georg
  */
 
@@ -11,8 +11,6 @@
 #include <stdint.h>
 #include "stm32f4xx.h"
 
-#define CS_LOW GPIOA->BSRR = GPIO_BSRR_BR_4;
-#define CS_HIGH GPIOA->BSRR = GPIO_BSRR_BS_4;
 
 #define DASH 0b1
 

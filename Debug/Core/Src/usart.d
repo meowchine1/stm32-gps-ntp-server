@@ -28,7 +28,8 @@ Core/Src/usart.o: ../Core/Src/usart.c ../Core/Inc/usart.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h \
- ../Core/Inc/ring_buf.h ../Core/Inc/watchdog.h ../Core/Inc/display.h
+ ../Core/Inc/ring_buf.h ../Core/Inc/watchdog.h ../Core/Inc/display.h \
+ ../Core/Inc/time.h
 ../Core/Inc/usart.h:
 ../Core/Inc/main.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
@@ -63,3 +64,4 @@ Core/Src/usart.o: ../Core/Src/usart.c ../Core/Inc/usart.h \
 ../Core/Inc/ring_buf.h:
 ../Core/Inc/watchdog.h:
 ../Core/Inc/display.h:
+../Core/Inc/time.h:
