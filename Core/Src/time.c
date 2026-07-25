@@ -37,35 +37,76 @@ extern TIM_HandleTypeDef htim5;
  * 3976214400
  */
 
-//#define FIXED_DATE_NTP 	1767225600UL
 
-#define FIXED_DATE_NTP 3976214400UL
+//#define FIXED_DATE_NTP 3976214400UL
 
 
-void sync_time_from_gps(uint8_t hour,
+void sync_time_from_gps(uint16_t year,
+                        uint8_t month,
+                        uint8_t day,
+                        uint8_t hour,
                         uint8_t minute,
                         uint8_t second)
 {
-    uint32_t seconds_today;
-
-    seconds_today =
-        hour * 3600UL +
-        minute * 60UL +
-        second;
-
-
-    current_ntp_seconds =
-        FIXED_DATE_NTP +
-        seconds_today;
-
+    uint32_t days = 0;
 
     /*
-     * TIM5 работает как микросекундный счетчик
+     * Считаем количество дней от 01.01.1900 до нужной даты
      */
-    //TIM5->CNT = 0;
+    for(uint16_t y = 1900; y < year; y++)
+    {
+        days += 365;
+
+        if((y % 4 == 0 && y % 100 != 0) || (y % 400 == 0))
+        {
+            days++;
+        }
+    }
+
+    /*
+     * Количество дней в месяцах
+     */
+    uint8_t month_days[] =
+    {
+        31, 28, 31, 30,
+        31, 30, 31, 31,
+        30, 31, 30, 31
+    };
+
+    for(uint8_t m = 1; m < month; m++)
+    {
+        days += month_days[m - 1];
+
+        // февраль в високосный год
+        if(m == 2 &&
+           ((year % 4 == 0 && year % 100 != 0) ||
+            (year % 400 == 0)))
+        {
+            days++;
+        }
+    }
+
+    /*
+     * Добавляем дни текущего месяца
+     */
+    days += day - 1;
+
+    /*
+     * Получаем NTP timestamp:
+     * секунды от 01.01.1900 00:00:00 UTC
+     */
+    current_ntp_seconds =
+          days * 86400UL
+        + hour * 3600UL
+        + minute * 60UL
+        + second;
+
+    /*
+     * TIM5 работает как микросекундный счетчик.
+     * Сбрасываем дробную часть NTP времени.
+     */
     __HAL_TIM_SET_COUNTER(&htim5, 0);
 }
-
 
 
 uint32_t get_ntp_seconds(void)

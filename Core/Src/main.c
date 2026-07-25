@@ -72,7 +72,7 @@ RingBuffer uart_rx_buf;
 extern UART_HandleTypeDef huart1;
 uint8_t uart_byte;
 
-extern uint8_t numbers[];
+//extern uint8_t numbers[];
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 

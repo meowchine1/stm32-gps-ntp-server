@@ -33,6 +33,8 @@
 #include "display.h"
 #include "string.h"
 #include "time.h"
+#include <string.h>
+#include <stdlib.h>
 
 /* USER CODE END 0 */
 
@@ -133,10 +135,16 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 uart_parser_t uart_parser;
 extern RingBuffer uart_rx_buf;
 extern uint8_t numbers[];
-
 uint8_t hour;
 uint8_t minute;
 uint8_t second;
+uint16_t year;
+uint8_t month;
+uint8_t day;
+
+//uint8_t hour;
+//uint8_t minute;
+//uint8_t second;
 
 const char packet_header_nmea_gps[] = "$GPRMC,";
 const char packet_header_nmea_glonass[] = "$GLRMC,";
@@ -151,6 +159,76 @@ void reset_uart_parser(void)
 	memset(&uart_parser, 0, sizeof(uart_parser_t));
 }
 
+
+void parse_rmc_packet(char *packet)
+{
+
+    char *token;
+    uint8_t field = 0;
+
+    token = strtok(packet, ",");
+
+    while(token != NULL)
+    {
+        switch(field)
+        {
+            case 1: // UTC time hhmmss.ss
+            {
+                if(strlen(token) >= 6)
+                {
+                    hour =
+                        (token[0] - '0') * 10 +
+                        (token[1] - '0');
+
+                    minute =
+                        (token[2] - '0') * 10 +
+                        (token[3] - '0');
+
+                    second =
+                        (token[4] - '0') * 10 +
+                        (token[5] - '0');
+                }
+
+                break;
+            }
+
+
+            case 9: // date ddmmyy
+            {
+                if(strlen(token) == 6)
+                {
+                    day =
+                        (token[0] - '0') * 10 +
+                        (token[1] - '0');
+
+                    month =
+                        (token[2] - '0') * 10 +
+                        (token[3] - '0');
+
+                    year =
+                        2000 +
+                        (token[4] - '0') * 10 +
+                        (token[5] - '0');
+                }
+
+                break;
+            }
+        }
+
+        token = strtok(NULL, ",");
+        field++;
+    }
+
+
+    sync_time_from_gps(
+        year,
+        month,
+        day,
+        hour,
+        minute,
+        second
+    );
+}
 
 void process_uart(void)
 {
@@ -196,11 +274,13 @@ void process_uart(void)
 					{
 						stop_watchdog();
 
-						hour = (uart_parser.buffer[7] - 0x30) * 10 + (uart_parser.buffer[8] - 0x30); // 0x30 = '0'
-						minute = (uart_parser.buffer[9] - 0x30) * 10 + (uart_parser.buffer[10] - 0x30);
-						second = (uart_parser.buffer[11] - 0x30) * 10 + (uart_parser.buffer[12] - 0x30);
+//						hour = (uart_parser.buffer[7] - 0x30) * 10 + (uart_parser.buffer[8] - 0x30); // 0x30 = '0'
+//						minute = (uart_parser.buffer[9] - 0x30) * 10 + (uart_parser.buffer[10] - 0x30);
+//						second = (uart_parser.buffer[11] - 0x30) * 10 + (uart_parser.buffer[12] - 0x30);
+//
+//						sync_time_from_gps(hour, minute, second);
 
-						sync_time_from_gps(hour, minute, second);
+						parse_rmc_packet((char*)uart_parser.buffer);
 
 						display_send_data(3, DASH);
 						display_send_data(6, DASH);
