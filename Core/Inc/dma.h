@@ -1,9 +1,9 @@
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file    usart.h
+  * @file    dma.h
   * @brief   This file contains all the function prototypes for
-  *          the usart.c file
+  *          the dma.c file
   ******************************************************************************
   * @attention
   *
@@ -18,8 +18,8 @@
   */
 /* USER CODE END Header */
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __USART_H__
-#define __USART_H__
+#ifndef __DMA_H__
+#define __DMA_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,36 +28,25 @@ extern "C" {
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
+/* DMA memory to memory transfer handles -------------------------------------*/
+
 /* USER CODE BEGIN Includes */
-#include <stdint.h>
+
 /* USER CODE END Includes */
 
 /* USER CODE BEGIN Private defines */
 
-#define STATE_BEGIN 0
-#define STATE_READ_PACKET 1
-
-typedef struct
-{
-	uint8_t state;
-	uint8_t ntp; //0 = nmea, 1 = ntp
-	uint8_t curr_byte;
-	uint8_t buffer[256];
-} uart_parser_t;
-
 /* USER CODE END Private defines */
 
-void MX_USART1_UART_Init(void);
+void MX_DMA_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-void reset_uart_parser(void);
-void process_uart(void);
-void interrupt_uart_processor(void);
+
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __USART_H__ */
+#endif /* __DMA_H__ */
 
