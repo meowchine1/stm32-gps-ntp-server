@@ -36,6 +36,9 @@
 #include <string.h>
 #include <stdlib.h>
 
+#define UART_BUF_SIZE 100 // Убедитесь, что размер uart_parser.buffer достаточно велик (например, 100 байт)
+
+
 /* USER CODE END 0 */
 
 UART_HandleTypeDef huart1;
@@ -130,8 +133,6 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 
 /* USER CODE BEGIN 1 */
 
-// ****************** Georg code **************************************************************************************************
-
 uart_parser_t uart_parser;
 extern RingBuffer uart_rx_buf;
 extern uint8_t numbers[];
@@ -162,9 +163,19 @@ void reset_uart_parser(void)
 
 void parse_rmc_packet(char *packet)
 {
+    // Защита: если спутники не пойманы (символ 'V'), не парсим мусор
+    if (strstr(packet, ",V,") != NULL)
+    {
+        return;
+    }
 
     char *token;
     uint8_t field = 0;
+
+    // Временные переменные, чтобы ничего не накладывалось друг на друга
+    uint8_t rmc_hour = 0, rmc_minute = 0, rmc_second = 0;
+    uint8_t rmc_day = 0, rmc_month = 0;
+    uint16_t rmc_year = 0;
 
     token = strtok(packet, ",");
 
@@ -172,45 +183,25 @@ void parse_rmc_packet(char *packet)
     {
         switch(field)
         {
-            case 1: // UTC time hhmmss.ss
+            case 1: // UTC time (hhmmss.ss)
             {
                 if(strlen(token) >= 6)
                 {
-                    hour =
-                        (token[0] - '0') * 10 +
-                        (token[1] - '0');
-
-                    minute =
-                        (token[2] - '0') * 10 +
-                        (token[3] - '0');
-
-                    second =
-                        (token[4] - '0') * 10 +
-                        (token[5] - '0');
+                    rmc_hour   = (token[0] - '0') * 10 + (token[1] - '0');
+                    rmc_minute = (token[2] - '0') * 10 + (token[3] - '0');
+                    rmc_second = (token[4] - '0') * 10 + (token[5] - '0');
                 }
-
                 break;
             }
 
-
-            case 9: // date ddmmyy
+            case 9: // Date (ddmmyy)
             {
                 if(strlen(token) == 6)
                 {
-                    day =
-                        (token[0] - '0') * 10 +
-                        (token[1] - '0');
-
-                    month =
-                        (token[2] - '0') * 10 +
-                        (token[3] - '0');
-
-                    year =
-                        2000 +
-                        (token[4] - '0') * 10 +
-                        (token[5] - '0');
+                    rmc_day   = (token[0] - '0') * 10 + (token[1] - '0');
+                    rmc_month = (token[2] - '0') * 10 + (token[3] - '0');
+                    rmc_year  = 2000 + (token[4] - '0') * 10 + (token[5] - '0');
                 }
-
                 break;
             }
         }
@@ -219,18 +210,178 @@ void parse_rmc_packet(char *packet)
         field++;
     }
 
+    // Если дата успешно распарсилась и она валидна (год >= 2024)
+    if(rmc_year >= 2024)
+    {
+        // 1. Обновляем глобальные переменные для вашего дисплея платы
+        hour   = rmc_hour;
+        minute = rmc_minute;
+        second = rmc_second;
+        day    = rmc_day;
+        month  = rmc_month;
+        year   = rmc_year;
 
-    sync_time_from_gps(
-        year,
-        month,
-        day,
-        hour,
-        minute,
-        second
-    );
+        // 2. Запускаем расчет секунд NTP от 1900 года
+        sync_time_from_gps(
+            year,
+            month,
+            day,
+            hour,
+            minute,
+            second
+        );
+    }
 }
 
+
+//
+//void parse_rmc_packet_(char *packet)
+//{
+//
+//    char *token;
+//    uint8_t field = 0;
+//
+//    token = strtok(packet, ",");
+//
+//    while(token != NULL)
+//    {
+//        switch(field)
+//        {
+//            case 1: // UTC time hhmmss.ss
+//            {
+//                if(strlen(token) >= 6)
+//                {
+//                    hour =
+//                        (token[0] - '0') * 10 +
+//                        (token[1] - '0');
+//
+//                    minute =
+//                        (token[2] - '0') * 10 +
+//                        (token[3] - '0');
+//
+//                    second =
+//                        (token[4] - '0') * 10 +
+//                        (token[5] - '0');
+//                }
+//
+//                break;
+//            }
+//
+//
+//            case 9: // date ddmmyy
+//            {
+//                if(strlen(token) == 6)
+//                {
+//                    day =
+//                        (token[0] - '0') * 10 +
+//                        (token[1] - '0');
+//
+//                    month =
+//                        (token[2] - '0') * 10 +
+//                        (token[3] - '0');
+//
+//                    year =
+//                        2000 +
+//                        (token[4] - '0') * 10 +
+//                        (token[5] - '0');
+//                }
+//
+//                break;
+//            }
+//        }
+//
+//        token = strtok(NULL, ",");
+//        field++;
+//    }
+//
+//
+//    sync_time_from_gps(
+//        year,
+//        month,
+//        day,
+//        hour,
+//        minute,
+//        second
+//    );
+//}
+
 void process_uart(void)
+{
+    uint8_t byte;
+    uint8_t error = buffer_get_from_front(&uart_rx_buf, &byte);
+
+    if(error) return;
+
+    switch(uart_parser.state)
+    {
+        case STATE_BEGIN:
+        {
+            if(byte == 0x24) // '$' - начало NMEA пакета
+            {
+                uart_parser.state = STATE_READ_PACKET;
+                uart_parser.ntp = 0;
+                uart_parser.curr_byte = 0; // Сбрасываем индекс на 0 перед записью
+                uart_parser.buffer[uart_parser.curr_byte++] = byte;
+
+                start_watchdog();
+            }
+            break;
+        }
+
+        case STATE_READ_PACKET:
+        {
+            // Защита от переполнения буфера
+            if (uart_parser.curr_byte >= (UART_BUF_SIZE - 1)) {
+                stop_watchdog();
+                reset_uart_parser();
+                break;
+            }
+
+            uart_parser.buffer[uart_parser.curr_byte++] = byte;
+            bump_watchdog();
+
+            // NMEA строки всегда заканчиваются переводом строки '\n' (0x0A)
+            if(byte == 0x0A)
+            {
+                stop_watchdog();
+
+                // Добавляем нуль-терминатор, чтобы буфер стал корректной C-строкой
+                uart_parser.buffer[uart_parser.curr_byte] = '\0';
+
+                // Проверяем, что это именно нужный нам пакет (например, RMC или GGA)
+                // Ищем сигнатуру после '$' (индексы 1-5, например "GPRMC" или "GNRMC")
+                if(strstr((char*)uart_parser.buffer, "RMC") != NULL)
+                {
+                    // Теперь пакет принят ПОЛНОСТЬЮ, можно безопасно парсить дату и время
+                    parse_rmc_packet((char*)uart_parser.buffer);
+
+                    // Переменные hour, minute, second должны обновляться внутри parse_rmc_packet!
+                    // Убедитесь, что они объявлены как глобальные или передаются наружу.
+                    display_send_data(3, DASH);
+                    display_send_data(6, DASH);
+
+                    display_send_data(2, numbers[second / 10]); // секунды
+                    display_send_data(1, numbers[second % 10]);
+
+                    display_send_data(5, numbers[minute / 10]); // минуты
+                    display_send_data(4, numbers[minute % 10]);
+
+                    display_send_data(8, numbers[hour / 10]);   // часы
+                    display_send_data(7, numbers[hour % 10]);
+                }
+
+                reset_uart_parser();
+            }
+            break;
+        }
+
+        default:
+            break;
+    }
+}
+
+
+void process_uart_(void)
 {
 	uint8_t byte;
 	uint8_t error = buffer_get_from_front(&uart_rx_buf, &byte);

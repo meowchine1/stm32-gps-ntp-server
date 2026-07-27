@@ -1,3 +1,5 @@
 ../Core/Src/time.c:44:6:sync_time_from_gps	40	static
-../Core/Src/time.c:112:10:get_ntp_seconds	4	static
-../Core/Src/time.c:119:10:get_ntp_fraction	16	static
+../Core/Src/time.c:112:10:get_ntp_seconds_	4	static
+../Core/Src/time.c:117:10:get_ntp_seconds	16	static
+../Core/Src/time.c:125:10:get_ntp_fraction_	16	static
+../Core/Src/time.c:134:10:get_ntp_fraction	24	static

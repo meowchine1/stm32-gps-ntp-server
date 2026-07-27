@@ -109,18 +109,33 @@ void sync_time_from_gps(uint16_t year,
 }
 
 
-uint32_t get_ntp_seconds(void)
+uint32_t get_ntp_seconds_(void)
 {
     return current_ntp_seconds;
 }
 
+uint32_t get_ntp_seconds(void)
+{
+    uint32_t extra_seconds = TIM5->CNT / 1000000ULL;
+    return current_ntp_seconds + extra_seconds;
+}
 
 
-uint32_t get_ntp_fraction(void)
+
+uint32_t get_ntp_fraction_(void)
 {
     uint64_t us = TIM5->CNT;
 
 
     return (uint32_t)
         ((us * 4294967296ULL) / 1000000ULL);
+}
+
+uint32_t get_ntp_fraction(void)
+{
+    // Берем только микросекунды внутри текущей секунды
+    uint64_t us = TIM5->CNT % 1000000ULL;
+
+    // Перевод микросекунд в 32-битное дробное число NTP
+    return (uint32_t)((us * 4294967296ULL) / 1000000ULL);
 }
