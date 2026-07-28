@@ -120,17 +120,6 @@ uint32_t get_ntp_seconds(void)
     return current_ntp_seconds + extra_seconds;
 }
 
-
-
-uint32_t get_ntp_fraction_(void)
-{
-    uint64_t us = TIM5->CNT;
-
-
-    return (uint32_t)
-        ((us * 4294967296ULL) / 1000000ULL);
-}
-
 uint32_t get_ntp_fraction(void)
 {
     // Берем только микросекунды внутри текущей секунды

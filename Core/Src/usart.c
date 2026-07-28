@@ -36,8 +36,9 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define UART_BUF_SIZE 100 // Убедитесь, что размер uart_parser.buffer достаточно велик (например, 100 байт)
-
+#define UART_BUF_SIZE 120 // Убедитесь, что размер uart_parser.buffer достаточно велик (например, 100 байт)
+volatile uint8_t is_time_synced = 0;
+extern volatile uint32_t uart_loss_timeout_counter;
 
 /* USER CODE END 0 */
 
@@ -143,10 +144,6 @@ uint16_t year;
 uint8_t month;
 uint8_t day;
 
-//uint8_t hour;
-//uint8_t minute;
-//uint8_t second;
-
 const char packet_header_nmea_gps[] = "$GPRMC,";
 const char packet_header_nmea_glonass[] = "$GLRMC,";
 const char packet_header_nmea_galileo[] = "$GARMC,";
@@ -230,80 +227,12 @@ void parse_rmc_packet(char *packet)
             minute,
             second
         );
+        // ВРЕМЯ УСПЕШНО ПОЛУЧЕНО: Выставляем флаг синхронизации!
+        is_time_synced = 1;
+        uart_loss_timeout_counter = 0; // СБРАСЫВАЕМ ТАЙМАУТ ПОТЕРI СВЯЗИ! Скрипт на связи.
+
     }
 }
-
-
-//
-//void parse_rmc_packet_(char *packet)
-//{
-//
-//    char *token;
-//    uint8_t field = 0;
-//
-//    token = strtok(packet, ",");
-//
-//    while(token != NULL)
-//    {
-//        switch(field)
-//        {
-//            case 1: // UTC time hhmmss.ss
-//            {
-//                if(strlen(token) >= 6)
-//                {
-//                    hour =
-//                        (token[0] - '0') * 10 +
-//                        (token[1] - '0');
-//
-//                    minute =
-//                        (token[2] - '0') * 10 +
-//                        (token[3] - '0');
-//
-//                    second =
-//                        (token[4] - '0') * 10 +
-//                        (token[5] - '0');
-//                }
-//
-//                break;
-//            }
-//
-//
-//            case 9: // date ddmmyy
-//            {
-//                if(strlen(token) == 6)
-//                {
-//                    day =
-//                        (token[0] - '0') * 10 +
-//                        (token[1] - '0');
-//
-//                    month =
-//                        (token[2] - '0') * 10 +
-//                        (token[3] - '0');
-//
-//                    year =
-//                        2000 +
-//                        (token[4] - '0') * 10 +
-//                        (token[5] - '0');
-//                }
-//
-//                break;
-//            }
-//        }
-//
-//        token = strtok(NULL, ",");
-//        field++;
-//    }
-//
-//
-//    sync_time_from_gps(
-//        year,
-//        month,
-//        day,
-//        hour,
-//        minute,
-//        second
-//    );
-//}
 
 void process_uart(void)
 {
@@ -379,112 +308,5 @@ void process_uart(void)
             break;
     }
 }
-
-
-void process_uart_(void)
-{
-	uint8_t byte;
-	uint8_t error = buffer_get_from_front(&uart_rx_buf, &byte);
-
-	if(error) return;
-
-	switch(uart_parser.state)
-	{
-		case STATE_BEGIN:
-		{
-			if(byte == 0x24) //'$'
-			{
-				uart_parser.state = STATE_READ_PACKET;
-				uart_parser.ntp = 0; //nmea
-				uart_parser.buffer[uart_parser.curr_byte] = byte;
-				uart_parser.curr_byte++;
-
-				start_watchdog();
-				break;
-			}
-			break;
-		}
-
-		case STATE_READ_PACKET:
-		{
-			if(uart_parser.ntp == 0) //nmea
-			{
-				uart_parser.buffer[uart_parser.curr_byte] = byte;
-				uart_parser.curr_byte++;
-				bump_watchdog();
-
-				if(uart_parser.curr_byte == 13) //HACK: we read first part of the packet where time should be
-				{
-					if(memcmp((void*)&uart_parser.buffer[0], (void*)&packet_header_nmea_gps, 6) == 0 ||
-							memcmp((void*)&uart_parser.buffer[0], (void*)&packet_header_nmea_glonass, 6) == 0 ||
-							memcmp((void*)&uart_parser.buffer[0], (void*)&packet_header_nmea_galileo, 6) == 0 ||
-							memcmp((void*)&uart_parser.buffer[0], (void*)&packet_header_nmea_beidou_1, 6) == 0 ||
-							memcmp((void*)&uart_parser.buffer[0], (void*)&packet_header_nmea_beidou_2, 6) == 0 ||
-							memcmp((void*)&uart_parser.buffer[0], (void*)&packet_header_nmea_qzss, 6) == 0 ||
-							memcmp((void*)&uart_parser.buffer[0], (void*)&packet_header_nmea_gnss, 6) == 0) //valid packet? we don't read full packet and do checksum check
-					{
-						stop_watchdog();
-
-//						hour = (uart_parser.buffer[7] - 0x30) * 10 + (uart_parser.buffer[8] - 0x30); // 0x30 = '0'
-//						minute = (uart_parser.buffer[9] - 0x30) * 10 + (uart_parser.buffer[10] - 0x30);
-//						second = (uart_parser.buffer[11] - 0x30) * 10 + (uart_parser.buffer[12] - 0x30);
-//
-//						sync_time_from_gps(hour, minute, second);
-
-						parse_rmc_packet((char*)uart_parser.buffer);
-
-						display_send_data(3, DASH);
-						display_send_data(6, DASH);
-
-						display_send_data(2, numbers[second / 10]); //seconds
-						display_send_data(1, numbers[second % 10]);
-
-						display_send_data(5, numbers[minute / 10]); //minutes
-						display_send_data(4, numbers[minute % 10]);
-
-						display_send_data(8, numbers[hour / 10]); //hours
-						display_send_data(7, numbers[hour % 10]);
-
-						reset_uart_parser();
-						break;
-					}
-					else
-					{
-						stop_watchdog();
-						reset_uart_parser();
-						break;
-					}
-				}
-			}
-
-			break;
-		}
-
-		default: break;
-	}
-}
-
-//void interrupt_uart_processor(void){
-//
-//	//extern UART_HandleTypeDef huart1;
-//	if (USART1->SR & USART_SR_RXNE){
-//		//GPIOA->BSRR = GPIO_BSRR_BS_0;
-//
-//		buffer_put_to_end(&uart_rx_buf,
-//				(USART1->DR == 0xB6 || USART1->DR == 0xA6) ?
-//						0x24 : ((USART1->DR == 0xB4 || USART1->DR == 0xA4) ?
-//								0x24 : USART1->DR));
-//
-//		if(USART1->DR == 0x24) //'$'
-//		{
-//			reset_uart_parser();
-//		}
-//
-//		//USART2->DR = USART1->DR;
-//		//GPIOA->BSRR = GPIO_BSRR_BR_0;
-//	}
-//}
-
-
 
 /* USER CODE END 1 */

@@ -1,8 +1,6 @@
-../Core/Src/usart.c:48:6:MX_USART1_UART_Init	2
-../Core/Src/usart.c:76:6:HAL_UART_MspInit	2
-../Core/Src/usart.c:109:6:HAL_UART_MspDeInit	2
-../Core/Src/usart.c:160:6:reset_uart_parser	1
-../Core/Src/usart.c:166:6:parse_rmc_packet	8
-../Core/Src/usart.c:240:6:parse_rmc_packet_	6
-../Core/Src/usart.c:310:6:process_uart	8
-../Core/Src/usart.c:386:6:process_uart_	14
+../Core/Src/usart.c:49:6:MX_USART1_UART_Init	2
+../Core/Src/usart.c:77:6:HAL_UART_MspInit	2
+../Core/Src/usart.c:110:6:HAL_UART_MspDeInit	2
+../Core/Src/usart.c:155:6:reset_uart_parser	1
+../Core/Src/usart.c:161:6:parse_rmc_packet	8
+../Core/Src/usart.c:237:6:process_uart	8

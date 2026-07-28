@@ -26,6 +26,7 @@
 #define NTP_STRATUM_PRIMARY    1
 #define NTP_POLL_DEFAULT       4
 #define NTP_PRECISION_DEFAULT  (-20)
+extern volatile uint8_t is_time_synced;
 
 enum
 {
@@ -60,85 +61,6 @@ static inline void put_u32(uint8_t *buf, uint32_t value)
     buf[3] = (uint8_t)value;
 }
 
-//static void build_ntp_response(void)
-//{
-//    uint32_t sec;
-//    uint32_t frac;
-//
-//    memset(tx_buffer, 0, sizeof(tx_buffer));
-//
-//    /*
-//     * LI = 0
-//     * Version = 4
-//     * Mode = Server
-//     */
-//    tx_buffer[0] =
-//          (NTP_LI_NO_WARNING << 6)
-//        | (NTP_VERSION << 3)
-//        | NTP_MODE_SERVER;
-//
-//    /*
-//     * Stratum
-//     */
-//    tx_buffer[1] = NTP_STRATUM_PRIMARY;
-//
-//    /*
-//     * Poll interval
-//     */
-//    tx_buffer[2] = NTP_POLL_DEFAULT;
-//
-//    /*
-//     * Precision
-//     */
-//    tx_buffer[3] = (uint8_t)NTP_PRECISION_DEFAULT;
-//
-//    /*
-//     * Root Delay
-//     */
-//    put_u32(&tx_buffer[NTP_ROOT_DELAY], 0);
-//
-//    /*
-//     * Root Dispersion
-//     */
-//    put_u32(&tx_buffer[NTP_ROOT_DISP], 0);
-//
-//    /*
-//     * Reference ID = GPS
-//     */
-//    tx_buffer[NTP_REFERENCE_ID + 0] = 'L';
-//    tx_buffer[NTP_REFERENCE_ID + 1] = 'O';
-//    tx_buffer[NTP_REFERENCE_ID + 2] = 'C';
-//    tx_buffer[NTP_REFERENCE_ID + 3] = 'L';
-//
-//    /*
-//     * Take current timestamp once.
-//     */
-//    sec = get_ntp_seconds();
-//    frac = get_ntp_fraction();
-//
-//    /*
-//     * Reference Timestamp
-//     */
-//    put_u32(&tx_buffer[NTP_REF_TS], sec);
-//    put_u32(&tx_buffer[NTP_REF_TS + 4], frac);
-//
-//    /*
-//     * Originate Timestamp
-//     *
-//     * Copy client's Transmit Timestamp.
-//     */
-//    memcpy(
-//        &tx_buffer[NTP_ORIG_TS],
-//        &rx_buffer[NTP_TX_TS],
-//        8
-//    );
-//
-//    /*
-//     * Receive Timestamp
-//     */
-//    put_u32(&tx_buffer[NTP_RECV_TS], sec);
-//    put_u32(&tx_buffer[NTP_RECV_TS + 4], frac);
-//}
 
 
 void ntp_server_init(void)
@@ -170,109 +92,7 @@ void ntp_server_init(void)
     getSn_SR(NTP_SOCKET);
 }
 
-static void build_ntp_response_(void)
-{
-    uint32_t sec;
-    uint32_t frac;
 
-    memset(tx_buffer, 0, sizeof(tx_buffer));
-
-
-    /*
-     * LI = 0
-     * Version = 3
-     * Mode = Server
-     */
-    tx_buffer[0] =
-          (NTP_LI_NO_WARNING << 6)
-        | (NTP_VERSION << 3)
-        | NTP_MODE_SERVER;
-
-
-    /*
-     * Stratum
-     */
-    tx_buffer[1] = NTP_STRATUM_PRIMARY;
-
-
-    /*
-     * Poll interval
-     */
-    tx_buffer[2] = NTP_POLL_DEFAULT;
-
-
-    /*
-     * Precision
-     */
-    tx_buffer[3] = (uint8_t)NTP_PRECISION_DEFAULT;
-
-
-    /*
-     * Root Delay
-     */
-    put_u32(&tx_buffer[NTP_ROOT_DELAY], 0);
-
-
-    /*
-     * Root Dispersion
-     */
-    put_u32(&tx_buffer[NTP_ROOT_DISP], 0);
-
-
-    /*
-     * Reference ID
-     */
-    tx_buffer[NTP_REFERENCE_ID + 0] = 'L';
-    tx_buffer[NTP_REFERENCE_ID + 1] = 'O';
-    tx_buffer[NTP_REFERENCE_ID + 2] = 'C';
-    tx_buffer[NTP_REFERENCE_ID + 3] = 'L';
-
-
-    /*
-     * Получаем текущее время один раз
-     */
-    sec  = get_ntp_seconds();
-    frac = get_ntp_fraction();
-
-
-    /*
-     * Reference Timestamp
-     */
-    put_u32(&tx_buffer[NTP_REF_TS], sec);
-    put_u32(&tx_buffer[NTP_REF_TS + 4], frac);
-
-
-    /*
-     * Originate Timestamp
-     *
-     * Копируем timestamp клиента
-     */
-    memcpy(
-        &tx_buffer[NTP_ORIG_TS],
-        &rx_buffer[NTP_TX_TS],
-        8
-    );
-
-
-    /*
-     * Receive Timestamp
-     */
-    put_u32(&tx_buffer[NTP_RECV_TS], sec);
-    put_u32(&tx_buffer[NTP_RECV_TS + 4], frac);
-
-
-    /*
-     * Transmit Timestamp
-     *
-     * ОБЯЗАТЕЛЬНО
-     * Время отправки ответа
-     */
-    sec  = get_ntp_seconds();
-    frac = get_ntp_fraction();
-
-    put_u32(&tx_buffer[NTP_TX_TS], sec);
-    put_u32(&tx_buffer[NTP_TX_TS + 4], frac);
-}
 
 static void build_ntp_response(void)
 {
@@ -287,12 +107,25 @@ static void build_ntp_response(void)
      * Version = 3
      * Mode = 4 (Server)
      */
-    tx_buffer[0] = (NTP_LI_NO_WARNING << 6) | (NTP_VERSION << 3) | NTP_MODE_SERVER;
 
     /*
-     * Stratum = 1 (Primary reference)
+     * LI (Leap Indicator):
+     * Если нет синхронизации — передаем 3 (Alarm condition / clock unsynchronized).
+     * Если синхронизация есть — передаем 0 (No warning).
      */
-    tx_buffer[1] = NTP_STRATUM_PRIMARY;
+    uint8_t li_status = is_time_synced ? NTP_LI_NO_WARNING : 3;
+
+    tx_buffer[0] =
+          (li_status << 6)
+        | (NTP_VERSION << 3)
+        | NTP_MODE_SERVER;
+
+    /*
+     * Stratum:
+     * Если сервер не синхронизирован, его Stratum по стандарту равен 0 (Kiss-o'-Death).
+     */
+    tx_buffer[1] = is_time_synced ? NTP_STRATUM_PRIMARY : 0;
+
 
     /*
      * Poll interval
@@ -362,73 +195,19 @@ void ntp_server_process(void)
     if(getSn_RX_RSR(NTP_SOCKET) == 0)
         return;
 
-
-    len = recvfrom(
-        NTP_SOCKET,
-        rx_buffer,
-        sizeof(rx_buffer),
-        ip,
-        &port
-    );
-
+    len = recvfrom(NTP_SOCKET, rx_buffer, sizeof(rx_buffer), ip, &port);
 
     if(len != NTP_PACKET_SIZE)
         return;
 
+    // ЖЕСТКАЯ БЛОКИРОВКА: Если STM32 еще не знает точного времени,
+    // мы просто ИГНОРИРУЕМ запрос и ничего не отправляем в ответ.
+    if (is_time_synced == 0)
+    {
+        return;
+    }
 
     build_ntp_response();
 
-
-    sendto(
-        NTP_SOCKET,
-        tx_buffer,
-        NTP_PACKET_SIZE,
-        ip,
-        port
-    );
+    sendto(NTP_SOCKET, tx_buffer, NTP_PACKET_SIZE, ip, port);
 }
-
-//
-//void ntp_server_process(void)
-//{
-//    uint8_t ip[4];
-//    uint16_t port;
-//    int32_t len;
-//
-//    if(getSn_RX_RSR(NTP_SOCKET) == 0)
-//        return;
-//
-//    len = recvfrom(
-//        NTP_SOCKET,
-//        rx_buffer,
-//        sizeof(rx_buffer),
-//        ip,
-//        &port
-//    );
-//
-//    if(len != NTP_PACKET_SIZE)
-//        return;
-//
-//    build_ntp_response();
-//
-//    /*
-//     * Transmit Timestamp
-//     *
-//     * Set immediately before packet transmission.
-//     */
-//    {
-//        uint32_t sec = get_ntp_seconds();
-//        uint32_t frac = get_ntp_fraction();
-//
-//        put_u32(&tx_buffer[NTP_TX_TS], sec);
-//        put_u32(&tx_buffer[NTP_TX_TS + 4], frac);
-//    }
-//
-//    sendto(
-//        NTP_SOCKET,
-//        tx_buffer,
-//        sizeof(tx_buffer),
-//        ip,
-//        port
-//    );
-//}

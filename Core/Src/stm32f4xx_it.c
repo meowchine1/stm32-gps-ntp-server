@@ -63,6 +63,8 @@
 extern TIM_HandleTypeDef htim2;
 extern UART_HandleTypeDef huart1;
 /* USER CODE BEGIN EV */
+extern volatile uint8_t is_time_synced; // Наш флаг синхронизации
+volatile uint32_t uart_loss_timeout_counter = 0; // Программный счетчик секунд
 
 /* USER CODE END EV */
 
@@ -210,7 +212,32 @@ void SysTick_Handler(void)
 void TIM2_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM2_IRQn 0 */
+	if (TIM2->SR & TIM_SR_UIF) // Проверяем флаг переполнения
+	    {
+	        TIM2->SR &= ~TIM_SR_UIF; // Сбрасываем флаг
 
+	        // Если в данный момент система синхронизирована
+	        if (is_time_synced)
+	        {
+	            // Так как старый TIM2 прерывается каждые 10 мс (или 100 мс по новому расчету),
+	            // давайте привяжемся к реальной секунде.
+	            // Предположим, прерывание настроено на 100 мс (вызывается 10 раз в секунду):
+	            static uint8_t ticks = 0;
+	            ticks++;
+	            if (ticks >= 10)
+	            {
+	                ticks = 0;
+	                uart_loss_timeout_counter++;
+
+	                // Если новые данные по UART не приходили более 5 минут (300 секунд)
+	                if (uart_loss_timeout_counter >= 300)
+	                {
+	                    is_time_synced = 0; // СБРОС СИНХРОНИЗАЦИИ: Сервер перейдет в LI=3
+	                    uart_loss_timeout_counter = 0;
+	                }
+	            }
+	        }
+	    }
   /* USER CODE END TIM2_IRQn 0 */
   HAL_TIM_IRQHandler(&htim2);
   /* USER CODE BEGIN TIM2_IRQn 1 */
